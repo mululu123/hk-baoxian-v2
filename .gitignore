@@ -1,0 +1,28 @@
+# PDFs (source exam materials - excluded to avoid copyright/size issues)
+*.pdf
+
+# Empty/intermediate output directory
+merged/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+.pytest_cache/
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Node (for Vercel CLI etc.)
+node_modules/
+.vercel

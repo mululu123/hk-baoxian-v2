@@ -1,0 +1,2 @@
+// Auto-generated index of question banks
+window.QUESTION_BANKS_META = [{"key":"paper1","label":"Paper 1","subject":"保險原理及實務","edition":"2025 新版","total":829,"sections":256},{"key":"paper3","label":"Paper 3","subject":"長期保險","edition":"2025 新版","total":884,"sections":255},{"key":"paper1_old","label":"試卷一 (旧)","subject":"保險原理及實務","edition":"旧版","total":872,"sections":161},{"key":"paper3_old","label":"試卷三 (旧)","subject":"長期保險","edition":"旧版","total":820,"sections":231}];
