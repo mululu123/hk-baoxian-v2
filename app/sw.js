@@ -1,11 +1,13 @@
 // Service Worker — cache app shell + question banks for offline use.
 // Bump CACHE_VERSION whenever shell files (HTML/CSS/JS) change so old caches roll over.
-const CACHE_VERSION = 'iiqe-v1';
+const CACHE_VERSION = 'iiqe-v2-sync';
 const SHELL = [
   './',
   './index.html',
   './css/style.css',
   './js/app.js',
+  './js/config.js',
+  './js/sync.js',
   './data/_meta.js',
   './manifest.json',
   './icon.svg',

@@ -41,7 +41,11 @@
 
 <script>window.QUESTION_BANKS = {};</script>
 <script src="data/_meta.js"></script>
-<script src="js/app.js"></script>
+<!-- Cloud sync: supabase-js loaded async (non-blocking); sync.js is a no-op until configured -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js" defer></script>
+<script src="js/config.js" defer></script>
+<script src="js/sync.js" defer></script>
+<script src="js/app.js" defer></script>
 <script>
   // Register service worker for offline + install-to-home-screen.
   // Only in production-like contexts (https or localhost); silently skip on file://.

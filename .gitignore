@@ -26,3 +26,12 @@ venv/
 # Node (for Vercel CLI etc.)
 node_modules/
 .vercel
+
+# Secrets — NEVER commit anything that looks like a key/token
+*.secret
+*.key
+.env
+.env.*
+supabase.txt
+secrets/
+credentials/

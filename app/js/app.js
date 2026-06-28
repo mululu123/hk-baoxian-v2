@@ -26,6 +26,8 @@ function saveState() {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(State.progress));
   } catch (e) { console.warn('saveState failed', e); }
+  // Push to cloud (debounced, no-op if sync disabled)
+  if (window.Sync) Sync.push(State.progress);
 }
 function getPaperProgress(paperKey) {
   if (!State.progress[paperKey]) {
@@ -34,9 +36,14 @@ function getPaperProgress(paperKey) {
       randomHistory: [],   // [{id, qno, question, yourAnswer, correctAnswer, correct, ts}]
       wrongBook: [],       // [question ids]
       stats: { answered: 0, correct: 0 },
+      _updatedAt: 0,       // ms epoch, used for last-write-wins cloud merge
     };
   }
   return State.progress[paperKey];
+}
+function touchPaperProgress(paperKey) {
+  const p = getPaperProgress(paperKey);
+  p._updatedAt = Date.now();
 }
 
 // ============ 工具 ============
@@ -165,6 +172,7 @@ function renderHome() {
   view.appendChild(el('div', { class: 'home-hero' },
     el('h1', {}, 'IIQE 模擬試題刷題'),
     el('p', {}, `共 ${meta.reduce((s, m) => s + m.total, 0)} 題 · 4 份題庫 · 離線可用`),
+    renderSyncBadge(),
   ));
 
   view.appendChild(el('div', { class: 'section-title' }, '① 選擇題庫'));
@@ -246,12 +254,13 @@ function renderHome() {
   if (totalAnswered > 0) {
     tools.appendChild(el('button', {
       class: 'ghost danger',
-      onclick: () => {
-        if (confirm('確定清除所有學習記錄和錯題本？此操作不可撤銷。')) {
-          localStorage.removeItem(STORAGE_KEY);
-          State.progress = {};
-          renderHome();
-        }
+      onclick: async () => {
+        if (!confirm('確定清除所有學習記錄和錯題本？此操作不可撤銷。')) return;
+        localStorage.removeItem(STORAGE_KEY);
+        State.progress = {};
+        // Also delete cloud copy so next pull doesn't restore it
+        if (window.Sync && Sync.isEnabled()) await Sync.clear();
+        renderHome();
       },
     }, '🗑️ 清除所有記錄'));
   }
@@ -521,6 +530,7 @@ function selectAnswer(letter) {
     });
     if (paperProg.randomHistory.length > 200) paperProg.randomHistory.shift();
   }
+  paperProg._updatedAt = Date.now();
   saveState();
 
   // 重新渲染（显示答案）
@@ -594,6 +604,7 @@ function nextQuestion() {
     // 用全局 question id 找进度
     const curGlobalIdx = bank.questions.findIndex(q => q.id === State.queue[State.cursor].id);
     if (curGlobalIdx >= 0) p.sequentialCursor = curGlobalIdx;
+    p._updatedAt = Date.now();
     saveState();
   }
   renderQuestion();
@@ -659,13 +670,71 @@ function exitQuiz() {
   renderHome();
 }
 
+// ============ 云同步 UI ============
+// Re-rendered on every renderHome(); also self-refreshes via 'syncstatus' event.
+function renderSyncBadge() {
+  const badge = el('div', { class: 'sync-badge', id: 'sync-badge' });
+  applySyncBadgeState(badge, window.Sync ? Sync.getStatus() : { status: 'disabled' });
+  return badge;
+}
+function applySyncBadgeState(badge, s) {
+  if (!badge) return;
+  const map = {
+    disabled: { cls: 'disabled', text: '☁ 雲同步未啟用', title: '在 js/config.js 填入 Supabase 憑證即可啟用' },
+    idle:     { cls: 'ok',       text: '✓ 已同步',       title: s.lastSync ? '上次同步：' + new Date(s.lastSync).toLocaleTimeString() : '' },
+    syncing:  { cls: 'busy',     text: '⟳ 同步中…',     title: '' },
+    error:    { cls: 'err',      text: '⚠ 同步失敗',    title: s.error || '' },
+  };
+  const m = map[s.status] || map.disabled;
+  badge.className = 'sync-badge ' + m.cls;
+  badge.textContent = m.text;
+  badge.title = m.title;
+}
+window.addEventListener('syncstatus', (e) => {
+  applySyncBadgeState(document.getElementById('sync-badge'), e.detail);
+});
+
+// ============ 启动同步：拉云端、按 last-write-wins 合并 ============
+async function syncOnLoad() {
+  if (!window.Sync || !Sync.isEnabled()) return;
+  const cloudMap = await Sync.pull();
+  if (!cloudMap) return;
+  let changed = false;
+  for (const [paperKey, row] of Object.entries(cloudMap)) {
+    const cloudMs = row.updated_at ? new Date(row.updated_at).getTime() : 0;
+    const localProg = State.progress[paperKey];
+    const localMs = (localProg && localProg._updatedAt) || 0;
+    if (!localProg || cloudMs > localMs) {
+      // Cloud is newer or local missing → take cloud
+      State.progress[paperKey] = row.progress;
+      // Preserve a local _updatedAt mirror so future comparisons work
+      State.progress[paperKey]._updatedAt = cloudMs;
+      changed = true;
+    }
+  }
+  if (changed) {
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(State.progress)); } catch {}
+    // Re-render home so stats reflect merged data
+    if (!State.currentMode) renderHome();
+  }
+  // If local had unsynced changes (no cloud row or local newer), push now
+  if (window.Sync) Sync.push(State.progress);
+}
+
 // ============ 初始化 ============
 function init() {
   loadState();
   $('#btn-exit').addEventListener('click', exitQuiz);
   $('#btn-next').addEventListener('click', nextQuestion);
   $('#btn-prev').addEventListener('click', prevQuestion);
+  // Initialize cloud sync (no-op if config missing).
+  // CONFIG comes from js/config.js (separate file so credentials live outside this code).
+  if (window.Sync && window.CONFIG) {
+    Sync.init(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
+  }
   renderHome();
+  // Pull cloud state in the background; updates UI when done.
+  syncOnLoad();
 }
 
 document.addEventListener('DOMContentLoaded', init);

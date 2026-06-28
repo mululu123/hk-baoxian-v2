@@ -170,6 +170,21 @@ button.large { padding: 14px 24px; font-size: 16px; }
   font-size: 14px;
   opacity: .9;
 }
+.sync-badge {
+  display: inline-block;
+  margin-top: 10px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 500;
+  background: rgba(255, 255, 255, 0.15);
+  color: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+}
+.sync-badge.ok    { background: rgba(72, 187, 120, 0.25);  border-color: rgba(72, 187, 120, 0.45); }
+.sync-badge.busy  { background: rgba(255, 255, 255, 0.22); }
+.sync-badge.err   { background: rgba(229, 62, 62, 0.30);   border-color: rgba(229, 62, 62, 0.50); }
+.sync-badge.disabled { opacity: .65; }
 .section-title {
   font-size: 14px;
   font-weight: 600;
