@@ -87,6 +87,14 @@ window.CONFIG = {
 - 离线时全部 no-op，恢复网络后下次写入会自动同步。
 - 后期加 Supabase Auth 后，只需把 RLS 策略换成基于 `auth.uid()`，前端再加登录 UI，进度会从 device_id 平滑迁到 user_id。
 
+### 题目举报（众包核对）
+
+每道题右上角有 **⚠ 舉報** 按钮。用户可上报：答案错误 / 选项重复 / 题目乱码 / 选项不足 / 其他。
+
+举报数据存到 Supabase 的 `question_reports` 表。建表 SQL 在 `sql/reports_table.sql`。要在 SQL Editor 跑一次才能启用云举报；未建表时举报会存到本地 localStorage，云同步启用后可补传。
+
+后台查看举报：进 Supabase Dashboard → Table Editor → `question_reports`。
+
 ## 注意
 
 原始考试 PDF 不包含在仓库内（版权原因）。如需重建数据，请自行准备 PDF 并依次运行：

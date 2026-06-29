@@ -473,6 +473,11 @@ function renderQuestion() {
   const meta = el('div', { class: 'q-meta' });
   meta.appendChild(el('span', { class: 'tag qno' }, q.no || '—'));
   if (q.section) meta.appendChild(el('span', { class: 'tag section' }, '章節 ' + q.section));
+  meta.appendChild(el('button', {
+    class: 'tag report-btn',
+    title: '舉報此題有問題',
+    onclick: () => openReportModal(q),
+  }, '⚠ 舉報'));
   card.appendChild(meta);
 
   card.appendChild(el('div', { class: 'q-text' }, q.question));
@@ -735,6 +740,134 @@ function init() {
   renderHome();
   // Pull cloud state in the background; updates UI when done.
   syncOnLoad();
+}
+
+// ============ 题目举报 ============
+const REPORT_REASONS = [
+  { key: 'wrong_answer',      label: '答案疑似錯誤',  needSuggested: true },
+  { key: 'duplicate_options', label: '選項有重複',    needSuggested: false },
+  { key: 'ocr_garbage',       label: '題目/選項亂碼', needSuggested: false },
+  { key: 'missing_options',   label: '選項不足 4 個', needSuggested: false },
+  { key: 'other',             label: '其他問題',      needSuggested: false },
+];
+
+function openReportModal(q) {
+  // Build modal
+  const modal = el('div', { class: 'modal-overlay', id: 'report-modal' },
+    el('div', { class: 'modal-card' },
+      el('div', { class: 'modal-title' },
+        '⚠ 舉報題目問題',
+        el('button', { class: 'modal-close', onclick: closeReportModal }, '×'),
+      ),
+      el('div', { class: 'modal-qno' }, `${State.currentPaper || ''} ${q.no || ''}`),
+      // Reason radio chips
+      el('div', { class: 'field-label' }, '問題類型'),
+      el('div', { class: 'chip-group', id: 'report-reason-group' },
+        ...REPORT_REASONS.map((r, i) => el('button', {
+          class: 'chip' + (i === 0 ? ' selected' : ''),
+          dataset: { reason: r.key },
+          onclick: () => {
+            modal.querySelectorAll('#report-reason-group .chip').forEach(c => c.classList.remove('selected'));
+            modal.querySelector(`#report-reason-group .chip[data-reason="${r.key}"]`).classList.add('selected');
+            // Show/hide suggested-answer row
+            const sg = modal.querySelector('#suggested-row');
+            sg.style.display = r.needSuggested ? '' : 'none';
+          },
+        }, r.label)),
+      ),
+      // Suggested answer
+      el('div', { id: 'suggested-row', class: 'field-row', style: 'display: none; margin-top: 12px;' },
+        el('div', { class: 'field-label' }, '你認為正確答案是'),
+        el('div', { class: 'chip-group', id: 'suggested-answer-group' },
+          ...['A', 'B', 'C', 'D'].map(l => el('button', {
+            class: 'chip small',
+            dataset: { letter: l },
+            onclick: () => {
+              modal.querySelectorAll('#suggested-answer-group .chip').forEach(c => c.classList.remove('selected'));
+              modal.querySelector(`#suggested-answer-group .chip[data-letter="${l}"]`).classList.add('selected');
+            },
+          }, l)),
+        ),
+      ),
+      // Note
+      el('div', { class: 'field-row', style: 'margin-top: 12px;' },
+        el('div', { class: 'field-label' }, '補充說明（可選）'),
+        el('textarea', {
+          id: 'report-note',
+          class: 'text-area',
+          rows: 3,
+          placeholder: '例如：PDF 第 39 頁上 Q166 的選項是...',
+        }),
+      ),
+      // Submit
+      el('div', { class: 'modal-actions' },
+        el('button', { class: 'ghost', onclick: closeReportModal }, '取消'),
+        el('button', {
+          class: 'primary',
+          id: 'report-submit-btn',
+          onclick: () => submitReportFromModal(q),
+        }, '送出'),
+      ),
+      el('div', { class: 'modal-sync-hint', id: 'report-status' }, ''),
+    ),
+  );
+  document.body.appendChild(modal);
+}
+
+function closeReportModal() {
+  const m = document.getElementById('report-modal');
+  if (m) m.remove();
+}
+
+async function submitReportFromModal(q) {
+  const modal = document.getElementById('report-modal');
+  if (!modal) return;
+  const reasonChip = modal.querySelector('#report-reason-group .chip.selected');
+  const reason = reasonChip ? reasonChip.dataset.reason : null;
+  if (!reason) {
+    alert('請選擇問題類型');
+    return;
+  }
+  const sgChip = modal.querySelector('#suggested-answer-group .chip.selected');
+  const suggested = sgChip ? sgChip.dataset.letter : null;
+  const note = (modal.querySelector('#report-note').value || '').trim();
+  const statusEl = modal.querySelector('#report-status');
+  const submitBtn = modal.querySelector('#report-submit-btn');
+
+  submitBtn.disabled = true;
+  submitBtn.textContent = '送出中…';
+
+  const report = {
+    paperKey: State.currentPaper,
+    questionId: q.id,
+    questionNo: q.no,
+    reason,
+    note,
+    suggestedAnswer: suggested,
+  };
+
+  // Always keep a local copy (works even without cloud)
+  const LOCAL_KEY = 'iiqe-local-reports';
+  let localReports = [];
+  try { localReports = JSON.parse(localStorage.getItem(LOCAL_KEY) || '[]'); } catch {}
+  localReports.push({ ...report, ts: Date.now() });
+  localStorage.setItem(LOCAL_KEY, JSON.stringify(localReports));
+
+  // Try cloud submission
+  if (window.Sync && Sync.isEnabled()) {
+    const res = await Sync.submitReport(report);
+    if (res.ok) {
+      statusEl.textContent = '✓ 已送出，感謝你的回報！';
+      setTimeout(closeReportModal, 900);
+    } else {
+      statusEl.textContent = '⚠ 雲端送出失敗（已存本地，下次同步會重試）：' + (res.error || '');
+      submitBtn.disabled = false;
+      submitBtn.textContent = '重試';
+    }
+  } else {
+    statusEl.textContent = '✓ 已記錄到本地（雲同步未啟用）';
+    setTimeout(closeReportModal, 900);
+  }
 }
 
 document.addEventListener('DOMContentLoaded', init);

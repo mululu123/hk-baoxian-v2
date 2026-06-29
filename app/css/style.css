@@ -111,6 +111,96 @@ button.ghost.danger:hover { background: var(--danger-bg); color: var(--danger); 
 button.block { width: 100%; }
 button.large { padding: 14px 24px; font-size: 16px; }
 
+/* 题目卡片上的举报按钮 */
+.report-btn {
+  margin-left: auto;
+  background: transparent;
+  color: var(--warn);
+  border: 1px solid var(--warn);
+  padding: 3px 8px !important;
+  font-size: 11px !important;
+  cursor: pointer;
+}
+.report-btn:hover { background: var(--warn-bg); }
+
+/* 举报模态框 */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+  padding: 16px;
+}
+.modal-card {
+  background: white;
+  border-radius: 14px;
+  width: 100%;
+  max-width: 480px;
+  padding: 20px;
+  box-shadow: 0 12px 40px rgba(0,0,0,0.2);
+  max-height: 90vh;
+  overflow-y: auto;
+}
+.modal-title {
+  font-size: 17px;
+  font-weight: 700;
+  margin-bottom: 4px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.modal-close {
+  background: transparent;
+  font-size: 24px;
+  color: var(--gray-600);
+  padding: 0 6px;
+  line-height: 1;
+}
+.modal-qno {
+  font-size: 13px;
+  color: var(--gray-600);
+  margin-bottom: 14px;
+}
+.field-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--gray-800);
+  margin-bottom: 6px;
+}
+.field-row { display: flex; flex-direction: column; }
+.chip-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.chip.small { padding: 6px 14px; font-size: 14px; min-width: 36px; }
+.text-area {
+  border: 1px solid var(--gray-200);
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-family: inherit;
+  font-size: 14px;
+  resize: vertical;
+  outline: none;
+}
+.text-area:focus { border-color: var(--primary); }
+.modal-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  margin-top: 18px;
+}
+.modal-sync-hint {
+  margin-top: 10px;
+  font-size: 12px;
+  color: var(--gray-600);
+  min-height: 16px;
+  text-align: right;
+}
+
 /* 题库加载遮罩 */
 #loading-overlay {
   position: fixed;

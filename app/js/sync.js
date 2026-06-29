@@ -128,11 +128,37 @@ window.Sync = (function () {
     }
   }
 
+  // ----- Question reports (众包核对) -----
+  // Submits a single report. Returns {ok, error?}.
+  async function submitReport(report) {
+    if (!enabled) return { ok: false, error: 'sync-disabled' };
+    setStatus('syncing');
+    try {
+      const row = {
+        device_id: getDeviceId(),
+        paper_key: report.paperKey,
+        question_id: report.questionId,
+        question_no: report.questionNo || null,
+        reason: report.reason,
+        note: report.note || null,
+        suggested_answer: report.suggestedAnswer || null,
+      };
+      const { error } = await client.from('question_reports').insert(row);
+      if (error) throw error;
+      setStatus('idle');
+      return { ok: true };
+    } catch (e) {
+      setStatus('error', e);
+      return { ok: false, error: String(e.message || e) };
+    }
+  }
+
   return {
     init,
     pull,
     push,
     clear,
+    submitReport,
     getStatus: () => ({ ...state }),
     getDeviceId,
     isEnabled: () => enabled,
